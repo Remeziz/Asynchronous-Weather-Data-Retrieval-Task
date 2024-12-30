@@ -1,0 +1,35 @@
+version: '3.9'
+
+services:
+  web:
+    build: .
+    container_name: "weather_web"
+    command: "python app.py"
+    ports:
+      - "5000:5000"    # Host:Container (Flask port)
+    depends_on:
+      - redis
+    volumes:
+      - ./weather_data:/app/weather_data
+    environment:
+      # Point Celery/Flask to use Redis service by container name "redis"
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+
+  celery_worker:
+    build: .
+    container_name: "weather_celery_worker"
+    command: "celery -A app.celery worker --loglevel=info"
+    depends_on:
+      - redis
+    volumes:
+      - ./weather_data:/app/weather_data
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+
+  redis:
+    image: "redis:latest"
+    container_name: "weather_redis"
+    ports:
+      - "6379:6379"
